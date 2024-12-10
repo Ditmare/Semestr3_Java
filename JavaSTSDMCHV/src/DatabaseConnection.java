@@ -3,7 +3,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DatabaseConnection {
-    private static final String URL = "jdbc:h2:~/test12"; //путь бд
+    private static final String URL = "jdbc:h2:~/test17"; //путь бд
     private static final String USER = "sa";
     private static final String PASSWORD = "";
 

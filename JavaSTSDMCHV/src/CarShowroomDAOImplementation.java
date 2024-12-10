@@ -5,7 +5,7 @@ public class CarShowroomDAOImplementation implements CarShowroomDAO {
     @Override
     public List<Car> getAllCars() {
         List<Car> cars = new ArrayList<>();
-        String query = "SELECT * FROM cars";
+        String query = "SELECT * FROM cars WHERE status = 'доступен'";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
@@ -53,30 +53,37 @@ public class CarShowroomDAOImplementation implements CarShowroomDAO {
             throw new IllegalStateException("Автомобиль уже продан. Невозможно выполнить продажу.");
         }
 
-        String query = "INSERT INTO sales (car_id, customer_name, age, gender) VALUES (?, ?, ?, ?)";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
-            pstmt.setInt(1, car.getId());
-            pstmt.setString(2, customer.getName());
-            pstmt.setInt(3, customer.getAge());
-            pstmt.setString(4, customer.getGender());
-            pstmt.executeUpdate();
-            updateCarStatus(car.getId(), "продан");
+        String insertSaleQuery = "INSERT INTO sales (car_id, customer_name, age, gender, type, model, brand, price) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String updateCarStatusQuery = "UPDATE cars SET status = 'продан' WHERE id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement pstmt = conn.prepareStatement(insertSaleQuery)) {
+                pstmt.setInt(1, car.getId());
+                pstmt.setString(2, customer.getName());
+                pstmt.setInt(3, customer.getAge());
+                pstmt.setString(4, customer.getGender());
+                pstmt.setString(5, car.getType());
+                pstmt.setString(6, car.getModel());
+                pstmt.setString(7, car.getBrand());
+                pstmt.setDouble(8, car.getPrice());
+                pstmt.executeUpdate();
+            }
+
+            try (PreparedStatement pstmt = conn.prepareStatement(updateCarStatusQuery)) {
+                pstmt.setInt(1, car.getId());
+                pstmt.executeUpdate();
+            }
+
+            conn.commit();
         } catch (SQLException e) {
             e.printStackTrace();
-        }
-    }
-
-
-    private void updateCarStatus(int carId, String status) {
-        String query = "UPDATE cars SET status = ? WHERE id = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
-            pstmt.setString(1, status);
-            pstmt.setInt(2, carId);
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
+            try (Connection conn = DatabaseConnection.getConnection()) {
+                conn.rollback();
+            } catch (SQLException rollbackEx) {
+                rollbackEx.printStackTrace();
+            }
         }
     }
 

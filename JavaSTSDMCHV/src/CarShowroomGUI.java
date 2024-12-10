@@ -4,6 +4,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
 import java.util.Map;
+import java.io.File;
 
 public class CarShowroomGUI extends JFrame {
     private JTextArea textArea;
@@ -20,7 +21,7 @@ public class CarShowroomGUI extends JFrame {
         setSize(800, 600);
         setLocationRelativeTo(null); // Центрируем окно на экране
 
-        //стиль для текста
+        // стиль для текста
         textArea = new JTextArea();
         textArea.setEditable(false);
         textArea.setFont(new Font("Arial", Font.PLAIN, 14));
@@ -34,33 +35,47 @@ public class CarShowroomGUI extends JFrame {
         buttonPanel.setLayout(new GridLayout(2, 3, 10, 10)); // Две строки, три столбца с отступами
         buttonPanel.setBackground(Color.LIGHT_GRAY);
 
-        //создание кнопок
+        // создание кнопок
         JButton sellButton = createButton("Продать автомобиль");
         JButton addCarButton = createButton("Добавить автомобиль");
         JButton addCustomerButton = createButton("Добавить покупателя");
         JButton editCarButton = createButton("Редактировать автомобиль");
         JButton editCustomerButton = createButton("Редактировать покупателя");
-        JButton refreshButton = createButton("Обновить");
+        JButton exportTextButton = createButton("Экспорт в текст");
 
-        //действия к кнопкам
+        // действия к кнопкам
         sellButton.addActionListener(e -> sellCar());
         addCarButton.addActionListener(e -> addCar());
         addCustomerButton.addActionListener(e -> addCustomer());
         editCarButton.addActionListener(e -> editCar());
         editCustomerButton.addActionListener(e -> editCustomer());
-        refreshButton.addActionListener(e -> refreshList());
+        exportTextButton.addActionListener(e -> exportDataToText());
 
-        //кнопки на панель
+        // кнопки на панель
         buttonPanel.add(sellButton);
         buttonPanel.add(addCarButton);
         buttonPanel.add(addCustomerButton);
         buttonPanel.add(editCarButton);
         buttonPanel.add(editCustomerButton);
-        buttonPanel.add(refreshButton);
+        buttonPanel.add(exportTextButton);
         add(buttonPanel, BorderLayout.SOUTH);
 
         refreshList();
         setVisible(true);
+    }
+
+    private void exportDataToText() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Сохранить как");
+        fileChooser.setSelectedFile(new File("export.txt"));
+
+        int userSelection = fileChooser.showSaveDialog(this);
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File fileToSave = fileChooser.getSelectedFile();
+            CarShowroomController controller = new CarShowroomController(showroomDAO);
+            controller.exportToTextFile(fileToSave.getAbsolutePath());
+            JOptionPane.showMessageDialog(this, "Данные успешно экспортированы в " + fileToSave.getAbsolutePath());
+        }
     }
 
     private JButton createButton(String text) {
@@ -99,7 +114,7 @@ public class CarShowroomGUI extends JFrame {
         for (Map.Entry<Car, Customer> entry : sales) {
             sb.append(String.format("Модель: %-15s | Марка: %-10s | Тип: %-10s | Цена: %-10.2f руб. | Статус: %s\n",
                     entry.getKey().getModel(), entry.getKey().getBrand(), entry.getKey().getType(),
-                    entry.getKey().getPrice(), entry.getKey().getStatus()));
+                    entry.getKey().getPrice(), "продан"));
             sb.append(String.format("Покупатель: %-15s | Возраст: %-3d | Пол: %s\n",
                     entry.getValue().getName(), entry.getValue().getAge(), entry.getValue().getGender()));
         }
@@ -117,7 +132,6 @@ public class CarShowroomGUI extends JFrame {
         textArea.setText(sb.toString());
     }
 
-
     private void sellCar() {
         Car selectedCar = getSelectedCar();
         Customer selectedCustomer = getSelectedCustomer();
@@ -132,7 +146,6 @@ public class CarShowroomGUI extends JFrame {
             JOptionPane.showMessageDialog(this, "Пожалуйста, выберите автомобиль и покупателя.");
         }
     }
-
 
     private void addCar() {
         JTextField typeField = new JTextField();
@@ -189,6 +202,15 @@ public class CarShowroomGUI extends JFrame {
                 if (name.trim().isEmpty()) {
                     JOptionPane.showMessageDialog(this, "Имя не может быть пустым.");
                     return;
+                }
+
+                // Проверка на существование покупателя
+                List<Customer> customers = showroomDAO.getAllCustomers();
+                for (Customer customer : customers) {
+                    if (customer.getName().equalsIgnoreCase(name)) {
+                        JOptionPane.showMessageDialog(this, "Покупатель с таким именем уже существует.");
+                        return;
+                    }
                 }
 
                 Customer newCustomer = new Customer(name, age, gender);
@@ -252,11 +274,12 @@ public class CarShowroomGUI extends JFrame {
             int option = JOptionPane.showConfirmDialog(this, message, "Редактировать покупателя", JOptionPane.OK_CANCEL_OPTION);
             if (option == JOptionPane.OK_OPTION) {
                 try {
-                    String oldName = selectedCustomer.getName();
+                    String oldName = selectedCustomer.getName(); // Сохраняем старое имя
                     selectedCustomer.setName(nameField.getText());
                     selectedCustomer.setAge(Integer.parseInt(ageField.getText()));
                     selectedCustomer.setGender(genderField.getText());
-                    showroomDAO.updateCustomer(selectedCustomer, oldName);
+                    showroomDAO.updateCustomer(selectedCustomer, oldName); // Передаем старое имя
+                    refreshList();
                 } catch (NumberFormatException e) {
                     JOptionPane.showMessageDialog(this, "Пожалуйста, введите корректный возраст.");
                 }

@@ -12,7 +12,7 @@ public class Car {
         this.model = model;
         this.brand = brand;
         this.price = price;
-        this.status = status; // Инициализация статуса
+        this.status = status;
     }
 
     public int getId() { return id; }
@@ -37,7 +37,7 @@ public class Car {
                 ", model='" + model + '\'' +
                 ", brand='" + brand + '\'' +
                 ", price=" + price +
-                ", status='" + status + '\'' + // Вывод статуса
+                ", status='" + status + '\'' +
                 '}';
     }
 }
